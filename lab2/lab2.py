@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.spatial.distance import cdist
 from tqdm.auto import tqdm
-
+from multiprocessing import Pool
 
 def calculate_average(*args, **kwargs):
     return np.mean(args)
@@ -95,21 +95,20 @@ def extract_path(data, solution: np.ndarray) -> np.ndarray:
 
 def evaluate(func, data, n=200, weight: float = 1.0):
     total, worst_value, best_value, best_solution = 0, 0, float("inf"), None
-    total_time, worst_time, best_time = 0, 0, float("inf")
-    for node_index in tqdm(range(n)):
-        start = time()
-        value, solution = func(data, node_index, weight)
-        elapsed = time() - start
-        total_time += elapsed
-        if elapsed < best_time:
-            best_time = elapsed
-        worst_time = max(worst_time, elapsed)
-
+    iterable = []
+    for i in range(n):
+        iterable.append([data,i,weight])
+    pool = Pool()
+    results = pool.starmap_async(func, iterable)
+    start = time()
+    for result in results.get():
+        value, solution = result
         total += value
         if value < best_value:
             best_solution = solution
             best_value = value
         worst_value = max(worst_value, value)
+    total_time = time() - start
 
     return dict(
         average_score=total / n,
@@ -117,7 +116,5 @@ def evaluate(func, data, n=200, weight: float = 1.0):
         best_score=best_value,
         solution=np.array(best_solution).T,
         path=extract_path(data, np.array(best_solution)),
-        average_time=total_time / n,
-        worst_time=worst_time,
-        best_time=best_time,
+        average_time=total_time / n
     )
