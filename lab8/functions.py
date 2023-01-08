@@ -239,7 +239,7 @@ def calculate_deltas_for_edge_exchange(
     return improving_moves
 
 
-def calculate_deltas(order: np.ndarray, distances: np.ndarray, neighborhood: np.ndarray) -> np.ndarray:
+def calculate_deltas(order: np.ndarray, distances: np.ndarray, neighborhood: np.ndarray, sort: bool =True) -> np.ndarray:
     possible_inter_moves = neighborhood[neighborhood[:, 0] == 0]
     improving_inter_moves = calculate_deltas_for_node_exchange_moves(
         order=order, distances=distances, possible_inter_moves=possible_inter_moves
@@ -252,10 +252,11 @@ def calculate_deltas(order: np.ndarray, distances: np.ndarray, neighborhood: np.
     )
 
     all_improving_moves = np.concatenate((improving_inter_moves, improving_edge_exchange_moves), axis=0)
+    if sort:
 
-    sorted_improving_moves = all_improving_moves[all_improving_moves[:, 0].argsort()[::-1]]
+        all_improving_moves = all_improving_moves[all_improving_moves[:, 0].argsort()[::-1]]
 
-    return sorted_improving_moves
+    return all_improving_moves
 
 
 def remove_not_applicable_moves(deltas: np.ndarray, best_move: np.ndarray) -> np.ndarray:
@@ -361,7 +362,7 @@ def local_search_steepest(order, distances, data):
 
 def local_search_greedy(order, distances, data):
     neighborhood = create_neighborhood(order=order, num_of_all_points=len(data))
-    deltas = calculate_deltas(order, distances, neighborhood)
+    deltas = calculate_deltas(order, distances, neighborhood,sort=False)
     counter = 0
 
     while len(deltas) > 0:
@@ -379,20 +380,20 @@ def local_search_greedy(order, distances, data):
             nodes_moves = deltas[:, 1] == 0
 
             deltas_to_recalculate = np.concatenate((deltas[moves_to_recalculate, 1:], new_deltas), axis=0)
-            updated_deltas = calculate_deltas(order, distances, deltas_to_recalculate)
+            updated_deltas = calculate_deltas(order, distances, deltas_to_recalculate,sort=False)
             # print("node exchange after recalculate: \n",updated_deltas)
 
             deltas = np.concatenate((deltas[~moves_to_recalculate], updated_deltas), axis=0)
-            deltas = deltas[deltas[:, 0].argsort()[::-1]]
+            # deltas = deltas[deltas[:, 0].argsort()[::-1]]
             # print("all deltas \n",deltas[:5])
 
         elif best_move[1] == 1:
             order = update_order_edge_exchange(order, best_move)
             updated_deltas = calculate_deltas(order, distances, neighborhood[neighborhood[:, 0] == 1])
-            new_deltas = calculate_deltas(order, distances, create_node_exchange_neighborhood(order, len(data)))
+            new_deltas = calculate_deltas(order, distances, create_node_exchange_neighborhood(order, len(data)),sort=False)
 
             deltas = np.concatenate((new_deltas, updated_deltas), axis=0)
-            deltas = deltas[deltas[:, 0].argsort()[::-1]]
+            # deltas = deltas[deltas[:, 0].argsort()[::-1]]
     return order
 
 
